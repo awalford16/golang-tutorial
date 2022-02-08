@@ -4,7 +4,7 @@
 // 	protoc        v3.19.4
 // source: currency.proto
 
-package __
+package currency
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
