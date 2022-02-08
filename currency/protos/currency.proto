@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+option go_package="./";
+
+service Currency {
+  rpc GetRate(RateRequest) returns (RateResponse) {}
+}
+
+message RateRequest {
+  Currencies Base = 1;
+  Currencies Destination = 2;
+}
+
+message RateResponse {
+  double Rate = 1;
+}
+
+enum Currencies {
+  EUR = 0;
+  USD = 1;
+  JPY = 2;
+  BGN = 3;
+  GBP = 4;
+}
