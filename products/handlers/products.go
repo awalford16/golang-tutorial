@@ -4,7 +4,8 @@ import (
 	"context"
 	"net/http"
 	"strconv"
-	"tutorials/products/data"
+
+	"github.com/awalford16/golang-tutorial/products/data"
 
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-hclog"

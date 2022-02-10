@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	protos "tutorials/currency/protos/currency"
+	protos "github.com/awalford16/golang-tutorial/currency/protos/currency"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/hashicorp/go-hclog"
@@ -30,10 +30,38 @@ type Products []*Product
 type ProductsDB struct {
 	currency protos.CurrencyClient
 	log      hclog.Logger
+	rates    map[string]float64
+	client   protos.Currency_SubscribeRatesClient
 }
 
 func NewProductsDB(c protos.CurrencyClient, l hclog.Logger) *ProductsDB {
-	return &ProductsDB{c, l}
+	pb := &ProductsDB{c, l, make(map[string]float64), nil}
+
+	go pb.handleUpdates()
+
+	return pb
+}
+
+func (p *ProductsDB) handleUpdates() {
+	sub, err := p.currency.SubscribeRates(context.Background())
+	if err != nil {
+		p.log.Error("Unable to subscribe for rates", "error", err)
+	}
+
+	// Set the client subscription
+	p.client = sub
+
+	for {
+		rr, err := sub.Recv()
+		if err != nil {
+			p.log.Error("Error receiving message", "error", err)
+			return
+		}
+
+		p.log.Info("Recieved updated rates from server", "destination", rr.Destination)
+
+		p.rates[rr.Destination.String()] = rr.Rate
+	}
 }
 
 func (p *ProductsDB) GetProducts(currency string) (Products, error) {
@@ -112,13 +140,24 @@ func findIndexByProductID(id int) int {
 }
 
 func (p *ProductsDB) getRate(destination string) (float64, error) {
+	// If rate is cached, return it
+	if r, ok := p.rates[destination]; ok {
+		return r, nil
+	}
+
 	// Get currency conversion
 	rr := &protos.RateRequest{
 		Base:        protos.Currencies(protos.Currencies_value["EUR"]),
 		Destination: protos.Currencies(protos.Currencies_value[destination]),
 	}
 
+	// Get initial rate
 	resp, err := p.currency.GetRate(context.Background(), rr)
+	p.rates[destination] = resp.Rate // Update cache
+
+	// Subscribe for updates
+	p.client.Send(rr)
+
 	return resp.Rate, err
 }
 

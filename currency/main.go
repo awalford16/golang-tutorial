@@ -4,9 +4,9 @@ import (
 	"net"
 	"os"
 
-	"tutorials/currency/data"
-	protos "tutorials/currency/protos/currency"
-	"tutorials/currency/server"
+	"github.com/awalford16/golang-tutorial/currency/data"
+	protos "github.com/awalford16/golang-tutorial/currency/protos/currency"
+	"github.com/awalford16/golang-tutorial/currency/server"
 
 	"github.com/hashicorp/go-hclog"
 	"google.golang.org/grpc"

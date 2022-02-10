@@ -2,6 +2,8 @@ package server
 
 import (
 	"context"
+	"io"
+	"time"
 
 	"github.com/awalford16/golang-tutorial/currency/data"
 	protos "github.com/awalford16/golang-tutorial/currency/protos/currency"
@@ -10,12 +12,40 @@ import (
 )
 
 type Currency struct {
-	rates *data.ExchangeRates
-	log   hclog.Logger
+	rates         *data.ExchangeRates
+	log           hclog.Logger
+	subscriptions map[protos.Currency_SubscribeRatesServer][]*protos.RateRequest
 }
 
 func NewCurrency(r *data.ExchangeRates, l hclog.Logger) *Currency {
-	return &Currency{r, l}
+	c := &Currency{r, l, make(map[protos.Currency_SubscribeRatesServer][]*protos.RateRequest)}
+	go c.handleUpdates()
+
+	return c
+}
+
+func (c *Currency) handleUpdates() {
+	ru := c.rates.MonitorRates(5 * time.Second)
+
+	for range ru {
+		c.log.Info("Got updated rates")
+
+		// Loop over subscribed clients
+		for k, v := range c.subscriptions {
+			// loop over rates
+			for _, rr := range v {
+				r, err := c.rates.GetRate(rr.GetBase().String(), rr.GetDestination().String())
+				if err != nil {
+					c.log.Error("Unable to get updated rate", "error", err)
+				}
+
+				err = k.Send(&protos.RateResponse{Base: rr.Base, Destination: rr.Destination, Rate: r})
+				if err != nil {
+					c.log.Error("Unable to send updated rates", "error", err)
+				}
+			}
+		}
+	}
 }
 
 func (c *Currency) GetRate(ctx context.Context, rr *protos.RateRequest) (*protos.RateResponse, error) {
@@ -26,5 +56,34 @@ func (c *Currency) GetRate(ctx context.Context, rr *protos.RateRequest) (*protos
 		return nil, err
 	}
 
-	return &protos.RateResponse{Rate: rate}, nil
+	return &protos.RateResponse{Base: rr.Base, Destination: rr.Destination, Rate: rate}, nil
+}
+
+func (c *Currency) SubscribeRates(src protos.Currency_SubscribeRatesServer) error {
+	for {
+		// Receive is a blocking method which will block until the client sends a message
+		rr, err := src.Recv()
+		if err == io.EOF {
+			c.log.Info("Client has closed the connection")
+			break
+		}
+
+		if err != nil {
+			c.log.Error("Unable to read from client", "error", err)
+			break
+		}
+
+		c.log.Info("Handle client request", "request", rr.GetBase(), "to", rr.GetDestination())
+
+		// Update map of rate requests
+		rrs, ok := c.subscriptions[src]
+		if !ok {
+			rrs = []*protos.RateRequest{}
+		}
+
+		rrs = append(rrs, rr)
+		c.subscriptions[src] = rrs
+	}
+
+	return nil
 }
