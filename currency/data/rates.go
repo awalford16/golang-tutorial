@@ -1,11 +1,8 @@
 package data
 
 import (
-	"encoding/xml"
 	"fmt"
 	"math/rand"
-	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/hashicorp/go-hclog"
@@ -19,7 +16,9 @@ type ExchangeRates struct {
 func NewRates(l hclog.Logger) (*ExchangeRates, error) {
 	er := &ExchangeRates{l: l, rates: map[string]float64{}}
 
-	return er, nil
+	err := er.getRates()
+
+	return er, err
 }
 
 func (e *ExchangeRates) GetRate(base string, destination string) (float64, error) {
@@ -66,26 +65,26 @@ func (e *ExchangeRates) MonitorRates(interval time.Duration) chan struct{} {
 }
 
 func (e *ExchangeRates) getRates() error {
-	resp, err := http.DefaultClient.Get("https://www.ecb.europa.eu/stats/eurofyref/eurofyref-daily.xml")
-	if err != nil {
-		return nil
-	}
+	// resp, err := http.DefaultClient.Get("https://www.ecb.europa.eu/stats/eurofyref/eurofyref-daily.xml")
+	// if err != nil {
+	// 	return nil
+	// }
 
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Expected status code 200 but got %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
+	// if resp.StatusCode != http.StatusOK {
+	// 	return fmt.Errorf("Expected status code 200 but got %d", resp.StatusCode)
+	// }
+	// defer resp.Body.Close()
 
-	md := &Cubes{}
-	xml.NewDecoder(resp.Body).Decode(&md)
+	// md := &Cubes{}
+	// xml.NewDecoder(resp.Body).Decode(&md)
 
-	for _, c := range md.CubeData {
-		r, err := strconv.ParseFloat(c.Rate, 64)
-		if err != nil {
-			return err
-		}
+	for _, c := range []string{"GBP", "USD", "JPY", "BGN"} {
+		// r, err := strconv.ParseFloat(c, 64)
+		// if err != nil {
+		// 	return err
+		// }
 
-		e.rates[c.Currency] = r
+		e.rates[c] = (rand.Float64() / 3)
 	}
 
 	// Data gives rates in comparison to eur

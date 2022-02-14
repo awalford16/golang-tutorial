@@ -77,7 +77,7 @@ func (p *Products) UpdateProduct(rw http.ResponseWriter, r *http.Request) {
 	// Cast request product to Product obj
 	prod := r.Context().Value(KeyProduct{}).(data.Product)
 
-	err = p.productDB.UpdateProduct(id, &prod)
+	err := p.productDB.UpdateProduct(id, &prod)
 	if err == data.ErrProductNotFound {
 		http.Error(rw, "Product not found", http.StatusNotFound)
 		return
@@ -106,7 +106,7 @@ func (p Products) MiddlewareProductValidation(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 		prod := data.Product{}
 
-		err := prod.FromJSON(r.Body)
+		err := data.FromJSON(prod, r.Body)
 		if err != nil {
 			http.Error(rw, "Unable to unmarshal json", http.StatusBadRequest)
 			return
