@@ -12,11 +12,11 @@ RUN go mod download
 # Copy code files into container
 COPY . .
 
-RUN go build -o currency .
+RUN go build -o products .
 
 WORKDIR /app
 
-RUN cp /build/currency .
+RUN cp /build/products .
 
-EXPOSE 9092
-CMD ["/app/currency"]
+EXPOSE 9090
+CMD ["/app/products"]

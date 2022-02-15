@@ -55,14 +55,21 @@ func (p *ProductsDB) handleUpdates() {
 
 	for {
 		rr, err := sub.Recv()
+
+		// Proto defines that the response should be one of message or error
+		if grpcErr := rr.GetError(); grpcErr != nil {
+			p.log.Error("Error subscribing for rates", "error", grpcErr.Message)
+			continue
+		}
+
 		if err != nil {
 			p.log.Error("Error receiving message", "error", err)
 			return
 		}
 
-		p.log.Info("Recieved updated rates from server", "destination", rr.Destination)
-
-		p.rates[rr.Destination.String()] = rr.Rate
+		resp := rr.GetRateResponse()
+		p.log.Info("Recieved updated rates from server", "destination", resp.GetDestination().String())
+		p.rates[resp.Destination.String()] = resp.Rate
 	}
 }
 
